@@ -208,3 +208,7 @@ def reset(section: str, request: Request, user: CurrentUser = Depends(require(Pe
     value = reset_section(db, section)
     audit.record(db, user.as_dict(), "settings.reset", "settings", section, None, client_ip(request))
     return {"section": section, "value": value}
+
+
+# Alias under the endpoint name used in the SIH26127 specification.
+router.add_api_route("/system/metrics", system_status, methods=["GET"], summary="Alias of /system/status")

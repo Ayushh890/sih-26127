@@ -51,9 +51,15 @@ are validated and audited.
 * **No allowed path.** No directed path exists that avoids edges marked `allowed = false`,
   such as the wrong direction of a one-way road. A confident plate can still carry the
   identity, but only as a *new journey*.
-* **Plates disagree.** Two confident plate reads differ, compared both with the previous
-  sighting and with the vehicle's best-known plate. This stops a plate-less intermediate
-  sighting from "changing" a vehicle's registration.
+* **Plates disagree.** Two confident plate reads (both ≥ `plate_min_confidence`) differ by
+  anything other than OCR-confusable characters: one ordinary substitution already means
+  another registration, because sequential plates (`UP32TE4006` / `UP32TE6006`) are common and
+  appearance cannot separate such cars. A read of at least half that confidence also vetoes
+  when the plates share hardly any characters (similarity < 0.5). Both checks run against
+  the previous sighting and against the vehicle's best-known plate, so a plate-less
+  intermediate sighting cannot "change" a vehicle's registration. These rules came from a
+  live demo run scored against the scenario's ground truth: 15 of 317 verifiable links were
+  false merges, and every one fell into one of these two cases.
 * **No identifying signal.** Timing and route alone are never enough. Either the plate or
   the appearance must reach `min_signal_for_link` (0.75).
 * **New journey without a plate.** The gap exceeds `journey_gap_s` (1800 s), or the path

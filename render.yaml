@@ -1,0 +1,27 @@
+# Render blueprint: one web service from docker/app.Dockerfile (API + embedded workers +
+# console) with SQLite and evidence on a persistent disk. See docs/deployment.md §8.
+# The free instance type (512 MB, 0.1 CPU, no disk) cannot run the ANPR pipeline; a
+# persistent disk requires a paid instance, hence "standard" (2 GB) below.
+services:
+  - type: web
+    name: nirnay
+    runtime: docker
+    dockerfilePath: ./docker/app.Dockerfile
+    dockerContext: .
+    plan: standard
+    healthCheckPath: /health
+    disk:
+      name: nirnay-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: DEMO_PASSWORD
+        sync: false          # asked for when the blueprint is applied
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PSEUDONYM_SECRET
+        generateValue: true
+      - key: LOG_JSON
+        value: "true"
+      - key: DEMO_CAMERAS
+        value: CAM-01,CAM-02,CAM-03,CAM-04

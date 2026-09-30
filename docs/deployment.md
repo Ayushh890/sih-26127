@@ -5,12 +5,14 @@ Docker, and a split production layout. They all use the same code. Only configur
 differs.
 
 > **What was verified here.** The development mode (SQLite, in-process bus, embedded
-> workers, six demo cameras) was run and tested on a 2-CPU / 4 GB Linux machine. Docker,
-> PostgreSQL and Redis were not available there, so the Compose stack, the Redis bus and a
-> live PostgreSQL database have **not** been exercised. The Alembic migration is tested by
-> upgrading and downgrading SQLite and checking it against the models; for PostgreSQL only
-> the generated SQL (including the PostGIS parts) is tested, offline. Run the Compose stack
-> once in your own environment before a production rollout.
+> workers, six demo cameras) was run and tested on a 2-CPU / 4 GB Linux machine. The
+> production topology was then run natively (without containers) against PostgreSQL 17 +
+> PostGIS 3.5 and Redis 8: Alembic upgrade on PostGIS, `WORKER_MODE=external` API plus a
+> separate `python -m app.workers.main` worker, vehicles tracked across five cameras over the
+> Redis bus. The single-container mode of §8 was run the same way, with SQLite and with a
+> hosted-style `postgresql://` URL. **Docker itself could not run in that environment**, so
+> the images (`docker/*.Dockerfile`) and the Compose stack have not been built or started.
+> Build and run them once in your own environment before a production rollout.
 
 ## 1. Quick start
 
@@ -88,13 +90,16 @@ Every variable is documented in `.env.example`. The important ones:
 | variable | default | notes |
 |---|---|---|
 | `APP_ENV` | `development` | `production` enforces the checks in §6. |
-| `DATABASE_URL` | SQLite in `data/` | `postgresql+psycopg://user:pass@host:5432/nirnay` for production. |
+| `DATABASE_URL` | SQLite at `$DATA_DIR/nirnay.db` | `postgresql+psycopg://user:pass@host:5432/nirnay` for production. `postgres://` / `postgresql://` URLs from hosting providers are accepted. |
+| `DATA_DIR` | `<repo>/data` (`/data` in the images) | Evidence, spool, the default SQLite database and (single container) generated secrets. Put it on a volume. |
+| `FRONTEND_DIR` | unset (`/app/frontend/dist` in `app.Dockerfile`) | When set, the API also serves the built console with an SPA fallback (§8). |
 | `REDIS_URL` | empty (in-process bus) | Required for `WORKER_MODE=external`. |
 | `WORKER_MODE` | `embedded` | `embedded`, `external` or `api-only`. |
 | `WORKER_ID`, `WORKER_SHARD` | `worker-1`, `0/1` | See §5. |
 | `JWT_SECRET`, `ENCRYPTION_KEY`, `PSEUDONYM_SECRET` | – | Required in production. |
 | `PRIVACY_MODE`, `EVIDENCE_ENCRYPTION` | `true`, `false` | Pseudonymised plates for analytics roles; Fernet-encrypted evidence at rest. |
 | `DEMO_USERS`, `SEED_DEMO`, `DEMO_SOURCE` | `true`, `true`, `synthetic` | Turn the demo users and data off in production. |
+| `DEMO_CAMERAS` | empty (all six) | Comma list of demo cameras started automatically, e.g. `CAM-01,CAM-02,CAM-03`. The others are seeded but stopped. |
 | `INFERENCE_DEVICE`, `INFERENCE_THREADS` | `auto`, `0` | ONNX Runtime provider and thread count. |
 | `DEFAULT_PROCESSING_FPS`, `DEFAULT_CONFIDENCE_THRESHOLD`, `OCR_CONFIDENCE_THRESHOLD` | 5, 0.35, 0.55 | Defaults for new cameras; each camera can override them. |
 | `CAMERA_TIMEOUT`, `CAMERA_MAX_BACKOFF` | 8 s, 60 s | Offline detection and the reconnect backoff cap. |
@@ -164,3 +169,82 @@ cd backend && ../.venv/bin/python scripts/generate_demo_videos.py
   observations, evidence files and health samples older than the configured periods.
 * **Backups.** Back up the PostgreSQL database and the data volume (evidence) together,
   since evidence manifests are hash-linked to database rows.
+
+## 8. Single-container cloud deployment (Railway, Render, a VM)
+
+`docker/app.Dockerfile` builds one image with everything: the console is built with Node and
+served by the API itself (`FRONTEND_DIR`), camera workers and ingestion run in the API process
+(`WORKER_MODE=embedded`, no Redis), and the database is SQLite on the data volume unless
+`DATABASE_URL` is set. `docker/start.sh` is the entry point:
+
+* listens on `$PORT` (set by the platform; default 8000) with proxy headers trusted, so
+  the platform's HTTPS and WebSocket (`wss://…/ws/…`) termination work unchanged;
+* generates `JWT_SECRET`, `PSEUDONYM_SECRET` and `ENCRYPTION_KEY` once into
+  `$DATA_DIR/secrets.env` (mode 600) unless they are set in the environment, which
+  always wins;
+* **refuses to start** if `DEMO_PASSWORD` is empty or the published default while demo
+  users are on (a hosted demo is on the public internet), and if `DATABASE_URL` points to an
+  external database while `ENCRYPTION_KEY` is not set (the stored camera credentials would
+  become unreadable after the next redeploy);
+* when started as root, gives `$DATA_DIR` to the unprivileged `nirnay` user and drops to it
+  (for platforms that mount volumes owned by root). *This path has not been exercised.*
+
+### Resource needs (measured)
+
+About **400 MB RAM plus ~130 MB per running camera** at the default demo rate, and roughly
+0.2 CPU per camera: 4 cameras ≈ 1.15–1.2 GB and 0.75 CPU, 6 cameras ≈ 1.5–1.6 GB. Choose
+`DEMO_CAMERAS` to fit the instance; stopped cameras can be started from the console. The
+image is about 1.5 GB (ONNX Runtime, OpenCV, models). Free tiers with 512 MB RAM cannot run
+the pipeline, and hosts without a persistent disk lose evidence and the SQLite database on
+every redeploy.
+
+### Railway
+
+`railway.json` selects the Dockerfile and the `/health` check.
+
+1. Push the repository to GitHub, then in Railway: *New Project → Deploy from GitHub repo*.
+2. Service → *Settings → Volumes*: add a volume mounted at **`/data`**. Railway mounts
+   volumes owned by root, so also set `RAILWAY_RUN_UID=0` (start.sh then chowns the volume
+   and drops privileges).
+3. *Variables*: `DEMO_PASSWORD` (a strong value) and `DEMO_CAMERAS` (for example
+   `CAM-01,CAM-02,CAM-03` on 1 GB). Optional: `LOG_JSON=true`.
+4. Optional PostgreSQL: add Railway's PostgreSQL service and set
+   `DATABASE_URL=${{Postgres.DATABASE_URL}}` **and** `ENCRYPTION_KEY` (see
+   `.env.example`). If the database has no PostGIS extension the migration skips the
+   PostGIS parts (geometry columns and spatial indexes); everything else works.
+5. *Settings → Networking → Generate Domain*, then open it and log in as `admin` with
+   `DEMO_PASSWORD`.
+
+Railway's trial and free plans cap a service at 1 GB and 0.5 GB of RAM respectively; the
+Hobby plan is billed by usage (at the time of writing about $10 per GB-month and $20 per
+vCPU-month, with $5 included), so a 3–4 camera demo running all month costs roughly $20–30.
+Check current prices before relying on this.
+
+### Render
+
+`render.yaml` is a blueprint for the same image with a 5 GB disk at `/data`. Render's free
+instance (512 MB, no disk) is too small, so the blueprint uses the paid `standard` plan
+(2 GB). *New → Blueprint*, choose the repository, and enter `DEMO_PASSWORD` when asked.
+
+### A free VM (full Compose stack)
+
+A VM with 2+ vCPU and 4+ GB (for example an Oracle Cloud *Always Free* Ampere instance)
+runs the complete Compose stack of §2, with PostgreSQL/PostGIS and Redis:
+
+```bash
+git clone <your repository> nirnay && cd nirnay
+./run.sh docker            # creates .env with random secrets, builds and starts the stack
+```
+
+Set `DEMO_PASSWORD` in `.env` before exposing it, and put TLS in front of port 3000 (for
+example Caddy: `caddy reverse-proxy --from your.domain --to localhost:3000`). On an ARM
+(Ampere) VM, note that the official `postgis/postgis` image is published for amd64 only:
+change the `postgres` image in `docker-compose.yml` to an arm64 PostGIS build, or to plain
+`postgres:16` (the migration then skips the PostGIS parts). The other images are multi-arch.
+
+### Single container locally
+
+```bash
+docker build -f docker/app.Dockerfile -t nirnay .
+docker run -p 8000:8000 -v nirnay-data:/data -e DEMO_PASSWORD='choose-one' -e DEMO_CAMERAS=CAM-01,CAM-02,CAM-03 nirnay
+```

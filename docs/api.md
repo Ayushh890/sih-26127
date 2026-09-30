@@ -120,12 +120,12 @@ scope of the chosen camera. Only the OD drill-down returns individual journeys.
 |---|---|---|
 | GET | `/api/analytics/overview` | Network snapshot; same payload as `analytics_updated`. |
 | GET | `/api/analytics/summary` | Counts, speeds, occupancy, queue, density and class mix for a period. |
-| GET | `/api/analytics/timeseries` | Bucketed traffic metrics (`bucket_s`, `camera_id`). |
+| GET | `/api/analytics/timeseries` | Bucketed traffic metrics (`bucket_s`, `camera_id`). Alias: `/api/analytics/traffic-volume`. |
 | GET | `/api/analytics/congestion` | Explainable congestion score per camera (levels FREE, MODERATE, HEAVY, SEVERE, NO_DATA) with components, weights and thresholds. |
 | GET | `/api/analytics/hotspots` | Cameras ranked by period congestion and alert load. |
-| GET | `/api/analytics/od-matrix` | Origin–destination journey counts. Small cells are suppressed unless the user has `analytics:od_individual`. |
+| GET | `/api/analytics/od-matrix` | Origin–destination journey counts. Small cells are suppressed unless the user has `analytics:od_individual`. Alias: `/api/analytics/od`. |
 | GET | `/api/analytics/od-matrix/vehicles` | Journeys behind one OD cell. Needs `analytics:od_individual` too; audited. |
-| GET | `/api/analytics/travel-times` | Segment travel times against baseline (travel-time anomaly). |
+| GET | `/api/analytics/travel-times` | Segment travel times against baseline (travel-time anomaly). Alias: `/api/analytics/travel-time`. |
 | POST | `/api/analytics/incident-impact` | Before/during comparison for an incident at a camera and its neighbours in the same data scope. |
 
 ### Alerts and watchlist
@@ -152,7 +152,7 @@ scope of the chosen camera. Only the OD drill-down returns individual journeys.
 
 | method | path | permission | purpose |
 |---|---|---|---|
-| GET | `/api/system/status` | `system:read` | Workers, pipeline, bus, database, models and storage. |
+| GET | `/api/system/status` | `system:read` | Workers, pipeline, bus, database, models and storage. Alias: `/api/system/metrics`. |
 | GET | `/api/system/events` | `system:read` | System event log. |
 | GET | `/api/system/dead-letters` | `system:read` | Events that failed ingestion after retries. |
 | POST | `/api/system/dead-letters/{id}/replay` | `settings:write` | Retry in-process, or requeue to the ingest stream when ingestion runs in a separate worker (`mode`). |

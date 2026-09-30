@@ -182,3 +182,10 @@ def incident_impact(body: IncidentQuery, user: CurrentUser = Depends(require(Per
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     has = r["site"]["during"] is not None
     return {**r, **scope_info("demo" if cam.is_demo else "live"), "has_data": has, "message": None if has else NO_DATA}
+
+
+# Aliases under the endpoint names used in the SIH26127 specification; same handlers and payloads.
+for _path, _handler, _summary in (("/traffic-volume", timeseries, "Alias of /timeseries: bucketed traffic volume"),
+                                   ("/od", od_matrix, "Alias of /od-matrix"),
+                                   ("/travel-time", travel_times, "Alias of /travel-times")):
+    router.add_api_route(_path, _handler, methods=["GET"], summary=_summary)

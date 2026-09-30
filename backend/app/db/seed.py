@@ -63,6 +63,7 @@ def seed_demo_network(db: Session, enable: bool) -> dict[str, Any]:
     net = load_network()
     scenario = get_scenario()
     existing = set(db.scalars(select(Camera.id)))
+    only = get_settings().demo_camera_ids
     added = []
     for c in net["cameras"]:
         if c["id"] in existing:
@@ -77,7 +78,8 @@ def seed_demo_network(db: Session, enable: bool) -> dict[str, Any]:
                 log.warning("DEMO_SOURCE=recorded but %s is missing (run scripts/generate_demo_videos.py); %s renders live", video.name, c["id"])
         db.add(Camera(id=c["id"], name=c["name"], location=f"{c['road_name']}, {c['zone']} (synthetic)", latitude=c["lat"], longitude=c["lon"],
                       source_type=source_type, source_uri=uri, resolution="{}x{}".format(*net["frame_size"]), lane_count=c["lane_count"],
-                      direction=c["direction"], road_name=c["road_name"], zone=c["zone"], camera_type=c.get("camera_type", "ANPR"), enabled=enable,
+                      direction=c["direction"], road_name=c["road_name"], zone=c["zone"], camera_type=c.get("camera_type", "ANPR"),
+                      enabled=enable and (not only or c["id"] in only),
                       status="OFFLINE", processing={"processing_fps": get_settings().demo_processing_fps, **DEMO_PROCESSING, "source_options": options}, calibration=cal, is_demo=True))
         added.append(c["id"])
     db.flush()

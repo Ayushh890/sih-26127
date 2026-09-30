@@ -11,12 +11,14 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
 from app.api.routes import alerts, analytics, auth, cameras, demo, evidence, local_camera, onvif, system, topology, users, vehicles, watchlist, ws
@@ -197,7 +199,35 @@ def create_app(start_services: bool = True) -> FastAPI:
 
     for r in (auth, users, cameras, vehicles, topology, analytics, alerts, watchlist, evidence, system, onvif, demo, ws, local_camera):
         app.include_router(r.router)
+    if settings.FRONTEND_DIR is not None:
+        mount_console(app, settings.FRONTEND_DIR)
     return app
+
+
+def mount_console(app: FastAPI, dist: Path) -> None:
+    """Serve the built console (``frontend/dist``) on the API origin, with an SPA fallback.
+
+    Used by single-container deployments; must run after the API routers are registered so
+    that API routes always take precedence.
+    """
+    dist = dist.resolve()
+    index = dist / "index.html"
+    if not index.is_file():
+        msg = f"FRONTEND_DIR={dist} has no index.html; the console is not served"
+        runtime.startup_errors.append(msg)
+        log.error(msg)
+        return
+    if (dist / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def console(path: str) -> FileResponse:
+        if path.startswith(("api/", "ws/")):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
+        f = (dist / path).resolve()
+        if path and f.is_file() and f.is_relative_to(dist):
+            return FileResponse(f)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 app = create_app()

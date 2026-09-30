@@ -55,7 +55,8 @@ To connect real cameras, see [docs/cctv-integration.md](docs/cctv-integration.md
 * **Frontend.** React, TypeScript, Vite, TanStack Query, Tailwind, Leaflet (offline) and
   Recharts.
 * **Deployment.** Docker Compose (frontend, backend, worker, postgres, redis), `run.sh` /
-  `run.bat`, and a non-Docker dev mode.
+  `run.bat`, a non-Docker dev mode, and a single-container image (`docker/app.Dockerfile`)
+  for Railway / Render.
 
 The default models are all permissively licensed (Apache-2.0 or MIT) and run locally. See
 [models/README.md](models/README.md) and `configs/models.yaml`.
@@ -78,7 +79,8 @@ docs/        documentation
 * [CCTV integration](docs/cctv-integration.md): sources, credentials, ONVIF, calibration and health.
 * [ANPR pipeline](docs/anpr-pipeline.md): every stage, evidence and tuning.
 * [Trajectory engine](docs/trajectory-engine.md): identity fusion, topology, baselines and prediction.
-* [Deployment](docs/deployment.md): Compose, dev mode, configuration, scaling and the production checklist.
+* [Deployment](docs/deployment.md): Compose, dev mode, configuration, scaling, the production checklist, and
+  single-container cloud deployment (Railway `railway.json`, Render `render.yaml`, a VM) in §8.
 * [API](docs/api.md): conventions, endpoints, WebSocket events and roles. OpenAPI is served at `/docs`.
 * [Demo script](docs/demo-script.md): the five-minute jury walkthrough.
 
@@ -108,7 +110,8 @@ time and checks that the scripted events are detected.
 What has and has not been verified is stated honestly in
 [docs/deployment.md](docs/deployment.md) and in the limitations section of
 [docs/architecture.md](docs/architecture.md). In particular:
-* the Compose, PostgreSQL and Redis deployment has not been run in the development
+* PostgreSQL/PostGIS, Redis and the external-worker topology were exercised natively, but
+  the Docker images and the Compose stack have not been built or run in the development
   environment;
 * speeds are monocular estimates;
 * the default detector and OCR are general-purpose models, not models trained on Indian

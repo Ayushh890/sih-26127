@@ -11,8 +11,8 @@ actually available (weights from the ``identity`` settings section, renormalised
 * attributes  – vehicle class and colour agreement
 
 Hard constraints reject a candidate outright: faster than physically possible over the
-shortest allowed road path, no allowed path at all, or two confident plate reads that
-disagree. Every decision carries a score, a confidence level and human-readable reasons;
+shortest allowed road path, no allowed path at all, or two plate reads that disagree
+(both confident, or near-confident and sharing hardly any characters). Every decision carries a score, a confidence level and human-readable reasons;
 rejected same-plate candidates are reported as conflicts (possible cloned plate).
 """
 from __future__ import annotations
@@ -29,12 +29,29 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import GlobalVehicle, VehicleEmbedding, VehicleObservation
-from app.ml.ocr.normalize import plate_similarity
+from app.ml.ocr.normalize import plate_similarity, weighted_edit_distance
 from app.services.topology import PathInfo, TopologyGraph
 from app.services.travel_times import path_baseline_s
 
 SIMILAR_COLOURS = [{"white", "silver"}, {"silver", "grey"}, {"grey", "black"}, {"red", "orange"}, {"orange", "brown"}, {"orange", "yellow"}]
 VEHICLE_FAMILY = {"car": "light", "truck": "heavy", "bus": "heavy", "motorcycle": "two_wheeler", "bicycle": "two_wheeler"}
+
+
+def plate_veto(a: str, b: str, p_rel: float) -> str | None:
+    """Why two plate reads cannot belong to one vehicle, or ``None``.
+
+    Confident reads (``p_rel`` >= 1) may differ only by OCR-confusable characters: a single
+    other substitution is a different registration (sequential plates such as UP32TE4006 /
+    UP32TE6006 are common, and appearance cannot tell such cars apart). A read below the
+    confidence bar still vetoes when it shares hardly any characters with the other read.
+    """
+    if a == b:
+        return None
+    if p_rel >= 1.0 and weighted_edit_distance(a, b) >= 1.0:
+        return "two confident plate reads disagree"
+    if p_rel >= 0.5 and (plate_similarity(a, b) or 0.0) < 0.5:
+        return "plate reads disagree on most characters"
+    return None
 
 
 @dataclass
@@ -155,12 +172,11 @@ class IdentityResolver:
             c.strong_plate = psim >= cfg["plate_strong_similarity"] and p_rel >= 1.0
             if psim == 1.0:
                 c.reasons.append(f"plate {obs.plate_text} matches exactly (OCR {prev.plate_confidence:.0%} / {obs.plate_confidence:.0%})")
-            elif psim >= 0.75:
-                c.reasons.append(f"plates {prev.plate_text} / {obs.plate_text} differ only by OCR-confusable characters (similarity {psim:.2f})")
             else:
-                c.reasons.append(f"plates differ: {prev.plate_text} vs {obs.plate_text} (similarity {psim:.2f})")
-                if p_rel >= 1.0:
-                    c.rejected = "two confident plate reads disagree"
+                how = "differ only by OCR-confusable characters" if weighted_edit_distance(obs.plate_text, prev.plate_text) < 1.0 else "differ"
+                c.reasons.append(f"plates {prev.plate_text} / {obs.plate_text} {how} (similarity {psim:.2f})")
+                if veto := plate_veto(obs.plate_text, prev.plate_text, p_rel):
+                    c.rejected = veto
                     return c
 
         # the vehicle's best-known plate also counts: a plate-less intermediate sighting
@@ -168,9 +184,9 @@ class IdentityResolver:
         if obs.plate_text and v.plate_text and v.plate_text != prev.plate_text:
             vsim = plate_similarity(obs.plate_text, v.plate_text) or 0.0
             vconf = min(obs.plate_confidence or 0.0, v.plate_confidence or 0.0)
-            if vsim < 0.75 and vconf >= cfg["plate_min_confidence"]:
+            if veto := plate_veto(obs.plate_text, v.plate_text, vconf / max(1e-6, cfg["plate_min_confidence"])):
                 c.reasons.append(f"plate {obs.plate_text} differs from the vehicle's registered plate {v.plate_text} (similarity {vsim:.2f})")
-                c.rejected = "two confident plate reads disagree"
+                c.rejected = veto
                 return c
 
         # --- topology / time ------------------------------------------------------

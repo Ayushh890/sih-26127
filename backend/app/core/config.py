@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -33,12 +33,15 @@ class Settings(BaseSettings):
     LOG_JSON: bool = True
 
     # --- storage -----------------------------------------------------------
-    DATABASE_URL: str = f"sqlite:///{REPO_ROOT / 'data' / 'nirnay.db'}"
+    DATABASE_URL: str = ""  # empty -> SQLite at DATA_DIR/nirnay.db
     DB_POOL_SIZE: int = 10
     DB_ECHO: bool = False
     REDIS_URL: str = ""  # empty -> in-process event bus (dev mode)
     DATA_DIR: Path = REPO_ROOT / "data"
     MODELS_DIR: Path = REPO_ROOT / "models"
+    # built console (frontend/dist). When set, the API also serves the console on the same origin
+    # (single-container deployments such as Railway/Render); Compose uses nginx instead.
+    FRONTEND_DIR: Path | None = None
     MODEL_CONFIG: Path = REPO_ROOT / "configs" / "models.yaml"
     DEMO_NETWORK_CONFIG: Path = REPO_ROOT / "configs" / "demo_network.json"
 
@@ -88,6 +91,9 @@ class Settings(BaseSettings):
     DEMO_SOURCE: Literal["synthetic", "recorded"] = "synthetic"
     DEMO_USERS: bool = True
     DEMO_PROCESSING_FPS: float = 0  # processing rate of seeded demo cameras; 0 = derive from the CPU budget
+    # comma-separated demo camera ids started automatically (empty = all). The others are still
+    # seeded and can be started from the console; used to fit small cloud instances (~130 MB/camera).
+    DEMO_CAMERAS: str = ""
     DEMO_PASSWORD: str = "nirnay-demo"  # password of the seeded demo accounts (development only)
     ADMIN_USERNAME: str = ""  # bootstrap administrator created on first start when set
     ADMIN_PASSWORD: str = ""
@@ -104,7 +110,28 @@ class Settings(BaseSettings):
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def _psycopg_driver(cls, v: object) -> object:
+        # hosted PostgreSQL (Railway, Render, Heroku-style) hands out postgres:// or postgresql:// URLs
+        if isinstance(v, str):
+            for prefix in ("postgres://", "postgresql://"):
+                if v.startswith(prefix):
+                    return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
+    @model_validator(mode="after")
+    def _default_sqlite(self) -> "Settings":
+        # keep the zero-config database next to the evidence, i.e. on the data volume
+        if not self.DATABASE_URL:
+            self.DATABASE_URL = f"sqlite:///{self.DATA_DIR / 'nirnay.db'}"
+        return self
+
     # --- derived helpers -------------------------------------------------------
+    @property
+    def demo_camera_ids(self) -> set[str]:
+        return {c.strip() for c in self.DEMO_CAMERAS.split(",") if c.strip()}
+
     @property
     def is_sqlite(self) -> bool:
         return self.DATABASE_URL.startswith("sqlite")

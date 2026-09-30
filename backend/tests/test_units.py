@@ -1,5 +1,6 @@
 """Unit tests: OCR normalisation and temporal fusion, the identity-switch guard, privacy
-masking, WebSocket event filtering, ONVIF parsing and rate limiting."""
+masking, WebSocket event filtering, ONVIF parsing, rate limiting and the plate veto of identity
+resolution."""
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -15,9 +16,11 @@ from app.core.bus import ui_event
 from app.core.ratelimit import SlidingWindowLimiter
 from app.core.security import plate_pseudonym
 from app.ml.ocr.fusion import PlateReadSample, fuse_reads
-from app.ml.ocr.normalize import is_valid_plate, normalize_plate, weighted_edit_distance
+from app.ml.ocr.normalize import is_valid_plate, normalize_plate, plate_similarity, weighted_edit_distance
 from app.ml.pipelines.anpr_pipeline import CameraPipeline, PipelineConfig, TrackState
 from app.services import privacy
+from app.services.identity import plate_veto
+from app.services.settings_service import _defaults
 
 
 # ------------------------------------------------------------------ plates
@@ -218,3 +221,22 @@ def test_worker_shards_partition_cameras():
     assert all(owns_camera(c, parse_shard("0/1")) for c in ids)
     with pytest.raises(ValueError):
         parse_shard("3/3")
+
+
+def test_plate_veto_separates_lookalike_registrations_but_not_misreads() -> None:
+    bar = _defaults()["identity"]["plate_min_confidence"]
+
+    def veto(a: str, b: str, conf_a: float, conf_b: float) -> str | None:
+        return plate_veto(a, b, min(conf_a, conf_b) / bar)
+
+    # false merges seen in a live demo run (checked against the scenario's ground truth)
+    assert veto("UP14JR7670", "UP14JX9670", 1.0, 1.0) == "two confident plate reads disagree"
+    assert veto("UP65A0417", "UP65A9415", 0.99, 1.0) == "two confident plate reads disagree"
+    assert veto("UP32TE4006", "UP32TE6006", 0.97, 0.97) == "two confident plate reads disagree"  # sequential plates
+    assert veto("UP32B5796", "UP32TT404", 1.0, 0.58) == "plate reads disagree on most characters"
+    assert veto("UP32B4365", "UP32TC6489", 0.38, 1.0) == "plate reads disagree on most characters"
+    # OCR near-misses of one plate stay linkable
+    assert veto("UP32TE7007", "UP32TE7O07", 1.0, 0.97) is None  # confusable O/0
+    assert veto("UP32X209", "UP32X2093", 0.75, 0.58) is None  # dropped character, weak read
+    # a read far below the bar carries no veto: it may be OCR noise
+    assert veto("UP32B5796", "HR55GT8073", 1.0, 0.2) is None

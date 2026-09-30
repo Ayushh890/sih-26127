@@ -208,6 +208,30 @@ def test_appearance_only_link_is_capped_and_cannot_change_plate(client: TestClie
     assert any("registered plate" in r or "disagree" in r for r in o["match_reasons"])
 
 
+def test_near_confident_different_plate_is_not_merged_by_appearance(client: TestClient, admin: dict[str, str], ingest: IngestionService,
+                                                                      network: dict[str, str]) -> None:
+    # regression: a 0.58 read (just under the 0.6 "confident" bar) of an unrelated plate was linked
+    # to a look-alike vehicle on appearance + timing alone
+    emb = embedding(77)
+    feed(ingest, observation("E2E-A", T0 + 1500, "UP32TE7007", embedding=emb),
+         observation("E2E-B", T0 + 1610, "UP32KX4185", conf=0.58, embedding=emb))
+    a = client.get("/api/vehicles/search", params={"plate": "UP32TE7007", "scope": "all"}, headers=admin).json()["results"][0]
+    b = client.get("/api/vehicles/search", params={"plate": "UP32KX4185", "scope": "all"}, headers=admin).json()["results"][0]
+    assert a["vehicle_code"] != b["vehicle_code"]
+    o = client.get(f"/api/observations/{b['id']}", headers=admin).json()
+    assert o["confidence_level"] == "NEW", o["match_reasons"]
+
+    # two confidently read registrations two characters apart are two vehicles, however alike they look
+    feed(ingest, observation("E2E-A", T0 + 1540, "UP14JR7670", embedding=emb), observation("E2E-B", T0 + 1650, "UP14JX9670", embedding=emb))
+    jr, jx = (client.get("/api/vehicles/search", params={"plate": p, "scope": "all"}, headers=admin).json()["results"][0] for p in ("UP14JR7670", "UP14JX9670"))
+    assert jr["vehicle_code"] != jx["vehicle_code"]
+
+    # an OCR near-miss at the same confidence still links (O/0 confusion)
+    feed(ingest, observation("E2E-C", T0 + 1730, "UP32TE7O07", conf=0.58, embedding=emb))
+    c = client.get("/api/vehicles/search", params={"plate": "UP32TE7O07", "scope": "all"}, headers=admin).json()["results"][0]
+    assert c["vehicle_code"] == a["vehicle_code"]
+
+
 def test_congestion_and_travel_times_historical_anchor(client: TestClient, analyst: dict[str, str], network: dict[str, str]) -> None:
     until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(T0 + 600))
     r = client.get("/api/analytics/congestion", params={"scope": "live", "until": until}, headers=analyst)

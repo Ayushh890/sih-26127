@@ -1,6 +1,6 @@
 # NIRNAY backend + worker image (the same image runs the API and the processing worker).
 FROM python:3.13-slim AS base
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 MALLOC_ARENA_MAX=2 \
     DATA_DIR=/data MODELS_DIR=/app/models
 # libgl/glib are needed by OpenCV's video I/O; ffmpeg libraries ship inside the opencv wheel
 RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 libgomp1 curl \
