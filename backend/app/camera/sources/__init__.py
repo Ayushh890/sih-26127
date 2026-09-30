@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.camera.sources.base import FAULT_KINDS, CameraSource, SourceError, safe_uri
+from app.camera.sources.browser import BrowserPushSource
 from app.camera.sources.demo import DemoSyntheticSource
 from app.camera.sources.opencv_sources import HTTPSource, RTSPSource, VideoFileSource, WebcamSource
 
@@ -11,6 +12,7 @@ SOURCE_TYPES: dict[str, type[CameraSource]] = {
     "rtsp": RTSPSource,
     "http": HTTPSource,
     "webcam": WebcamSource,
+    "browser": BrowserPushSource,
     "file": VideoFileSource,
     "demo": DemoSyntheticSource,
 }
@@ -48,4 +50,4 @@ def probe_source(source_type: str, uri: str, *, username: str | None = None, pas
 
 
 __all__ = ["CameraSource", "SourceError", "FAULT_KINDS", "SOURCE_TYPES", "create_source", "probe_source", "safe_uri",
-           "RTSPSource", "HTTPSource", "WebcamSource", "VideoFileSource", "DemoSyntheticSource"]
+           "RTSPSource", "HTTPSource", "WebcamSource", "BrowserPushSource", "VideoFileSource", "DemoSyntheticSource"]

@@ -10,13 +10,52 @@ same pipeline; only the `CameraSource` implementation is different.
 |---|---|---|
 | `rtsp` | `rtsp://host:554/path` or `rtsps://…` | FFmpeg via OpenCV. `processing.source_options.transport` can be `tcp` (default) or `udp`. |
 | `http` | `http(s)://host/…` | `source_options.mode`: `mjpeg` (default, a multipart MJPEG stream) or `snapshot` (the JPEG URL is polled at `source_options.snapshot_fps`, default 2). |
-| `webcam` | `0`, `1`, … or `/dev/videoN` | A local capture device. |
+| `webcam` | `0`, `1`, … or `/dev/videoN` | A capture device attached to the **server** (the machine running the stream workers). |
+| `browser` | `browser://local` | **Local Camera demo.** The webcam of the computer running the console, streamed from the browser. See [Local Camera](#local-camera-demo-input). |
 | `file` | a local video path | Played at native speed. `source_options.loop` restarts the file at the end. Use this for recorded footage and the `recorded` demo mode. |
 | `demo` | `demo://CAM-01` | Frames rendered by the synthetic scenario. These cameras are flagged `is_demo` and labelled DEMO everywhere. |
 
 URIs are validated when you create a camera: an RTSP camera must use `rtsp://` or
 `rtsps://`, a webcam must be a device index, and so on. Unknown request fields are
 rejected.
+
+## Local Camera (demo input)
+
+For demonstrations without CCTV, the console's **Local Camera** page (`/local-camera`,
+needs `cameras:control`) streams the laptop webcam into the normal pipeline. It is
+labelled *LOCAL CAMERA DEMO* and is not presented as CCTV.
+
+1. Register a camera with `source_type: "browser"` and `source_uri: "browser://local"`
+   (the page offers a form for users with `cameras:write`; it is created disabled).
+2. Press **Start camera**. The browser asks for camera permission, captures frames
+   (`getUserMedia`), encodes them as JPEG and sends each one as a binary message over
+   `WS /ws/cameras/{id}/ingest?token=…`. Then it enables the camera.
+3. The API puts each frame into the camera's input inbox on the event bus (in memory, or
+   a Redis list when the workers run in their own container). `BrowserPushSource` reads
+   it there, and the camera's `StreamWorker` handles it like any RTSP frame: detection,
+   tracking, plate reading, re-identification, health and ingestion.
+4. **Stop camera** releases the webcam, closes the socket and disables the camera. This is
+   an intentional stop, so no offline alert is raised.
+
+Frames are real pixels, so the camera is not `is_demo`. Its observations count as live
+data. Once any non-demo camera exists, the console's *Auto* scope shows live data; pick
+*All* in the header to see the demo cameras alongside it.
+
+**Backpressure.** The server acknowledges every frame. The browser keeps at most
+`max_in_flight` (2) frames unacknowledged and skips captures while the window is full.
+The inbox keeps only the newest 3 frames per camera and drops the oldest, so memory stays
+bounded whatever the upload rate. Frames larger than 2 MB, or not JPEG, are rejected and
+counted.
+
+**Truthful state.** The page shows frames sent, frames the backend acknowledged, and the
+worker's own measured input fps, processing fps, active tracks and status. Nothing is
+estimated in the browser. If no frames arrive, the camera is OFFLINE with *waiting for the
+browser to send frames*, and it reconnects within 2 s of the browser starting.
+
+**Browser requirements.** Camera access needs a secure page: `https://…` or
+`http://localhost`. A LAN IP over plain `http://` is blocked by the browser. The page
+explains denied permission, missing cameras, a camera in use by another application and
+unsupported browsers.
 
 ## Credentials
 

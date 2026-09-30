@@ -38,7 +38,7 @@ To connect real cameras, see [docs/cctv-integration.md](docs/cctv-integration.md
 
 | area | capabilities |
 |---|---|
-| **Ingestion** | RTSP, HTTP (MJPEG or snapshot), webcam, file and demo sources behind one `CameraSource` interface. Reconnects with backoff and jitter, health states ONLINE/DEGRADED/OFFLINE/CONNECTING/ERROR, ONVIF discovery and probing. A failing camera never affects the others. |
+| **Ingestion** | RTSP, HTTP (MJPEG or snapshot), webcam, browser Local Camera (the laptop webcam streamed from the console, labelled LOCAL CAMERA DEMO), file and demo sources behind one `CameraSource` interface. Reconnects with backoff and jitter, health states ONLINE/DEGRADED/OFFLINE/CONNECTING/ERROR, ONVIF discovery and probing. A failing camera never affects the others. |
 | **ANPR pipeline** | YOLOX vehicle detection → ByteTrack → YOLOv9 plate detection → rectification and enhancement → CCT OCR → Indian plate normalisation (raw text kept, corrections listed) → temporal voting → MobileNetV2 Re-ID → speed, direction and lane estimates. Each camera has configurable fps, resolution, thresholds, frame skip and queue size. |
 | **Identity and trajectory** | Weighted fusion of plate, appearance, time, route and attributes. Every link carries `match_score`, `match_reasons` and a confidence level. The road topology rejects physically impossible links. Journeys are replayed on an offline road map, with a predicted next camera whose outcome is tracked. |
 | **Analytics** | Counts, speeds, occupancy, queue and density. An explainable congestion score (FREE/MODERATE/HEAVY/SEVERE), hotspots, the OD matrix, travel-time anomalies, incident impact and an emergency-corridor planner (simulation only). |

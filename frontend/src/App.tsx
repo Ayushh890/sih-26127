@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Cameras = lazy(() => import("./pages/Cameras"));
 const CameraDetail = lazy(() => import("./pages/CameraDetail"));
+const LocalCamera = lazy(() => import("./pages/LocalCamera"));
 const VehicleSearch = lazy(() => import("./pages/VehicleSearch"));
 const VehicleDetail = lazy(() => import("./pages/VehicleDetail"));
 const ObservationDetail = lazy(() => import("./pages/ObservationDetail"));
@@ -63,6 +64,7 @@ export function AppRoutes() {
         <Route index element={<Guard perm={P.CAMERAS_READ}><CommandCenter /></Guard>} />
         <Route path="cameras" element={<Guard perm={P.CAMERAS_READ}><Cameras /></Guard>} />
         <Route path="cameras/:id" element={<Guard perm={P.CAMERAS_READ}><CameraDetail /></Guard>} />
+        <Route path="local-camera" element={<Guard perm={P.CAMERAS_CONTROL}><LocalCamera /></Guard>} />
         <Route path="vehicles/search" element={<Guard perm={P.VEHICLES_SEARCH}><VehicleSearch /></Guard>} />
         <Route path="vehicles/:ref" element={<Guard perm={P.TRAJECTORY_READ}><VehicleDetail /></Guard>} />
         <Route path="observations/:id" element={<Guard perm={P.TRAJECTORY_READ}><ObservationDetail /></Guard>} />

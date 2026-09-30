@@ -57,7 +57,7 @@ class Camera(Base):
     location: Mapped[str] = mapped_column(String(255), default="")
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
-    source_type: Mapped[str] = mapped_column(String(16))  # rtsp|http|webcam|file|demo
+    source_type: Mapped[str] = mapped_column(String(16))  # rtsp|http|webcam|browser|file|demo
     source_uri: Mapped[str] = mapped_column(Text)  # credentials are never stored here
     username: Mapped[str | None] = mapped_column(String(128), nullable=True)
     password_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)

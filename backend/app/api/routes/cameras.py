@@ -140,7 +140,7 @@ def create_camera(body: CameraCreate, request: Request, user: CurrentUser = Depe
     if db.get(Camera, body.id):
         raise HTTPException(status.HTTP_409_CONFLICT, f"camera {body.id} already exists")
     if body.source_type == "demo":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "demo cameras are created by the demo seeder; use rtsp, http, webcam or file")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "demo cameras are created by the demo seeder; use rtsp, http, webcam, browser or file")
     if body.source_type == "file":
         _check_file(body.source_uri)
     proc = body.processing.model_dump(exclude_none=True) if body.processing else {}

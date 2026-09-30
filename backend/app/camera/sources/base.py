@@ -1,6 +1,6 @@
 """Camera source interface.
 
-Every input (RTSP, HTTP/MJPEG, webcam, video file, synthetic demo) implements the same
+Every input (RTSP, HTTP/MJPEG, webcam, browser upload, video file, synthetic demo) implements the same
 contract so the stream worker, health monitor and pipeline are identical for all of them:
 
 ``connect()`` · ``read_frame(timeout)`` · ``is_alive()`` · ``stop()`` · ``reconnect()``
@@ -65,6 +65,8 @@ class SourceStats:
 
 class CameraSource(ABC):
     source_type = "abstract"
+    # upper bound on the reconnect backoff (None = the health monitor's CAMERA_MAX_BACKOFF)
+    max_retry_delay: float | None = None
 
     def __init__(self, camera_id: str, uri: str, *, username: str | None = None, password: str | None = None,
                  max_queue_size: int = 4, options: dict[str, Any] | None = None) -> None:

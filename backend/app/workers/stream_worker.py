@@ -155,6 +155,8 @@ class StreamWorker:
             self.source.connect()
         except SourceError as e:
             tr, delay = self.health.on_connect_failed(str(e), e.permanent)
+            if self.source.max_retry_delay is not None:
+                delay = min(delay, self.source.max_retry_delay)
             self._publish_transition(tr)
             self._put_runtime(time.time(), force=True)
             log.warning("connect failed; retry in %.1fs", delay, extra={"camera_id": self.camera_id, "status": str(e)})

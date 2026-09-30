@@ -394,7 +394,7 @@ export function numList(v: string): number[] | undefined | null {
   return parts.every((n) => Number.isFinite(n)) ? parts : null;
 }
 
-export const SOURCE_TYPES_CREATE = ["rtsp", "http", "webcam", "file"] as const;
+export const SOURCE_TYPES_CREATE = ["rtsp", "http", "webcam", "browser", "file"] as const;
 export const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
 export const CAMERA_TYPES = ["ANPR", "SURVEILLANCE", "PTZ", "OVERVIEW"] as const;
 export const FAULT_KINDS = ["offline", "blur", "low_fps", "dark"] as const;
@@ -402,7 +402,8 @@ export const FAULT_KINDS = ["offline", "blur", "low_fps", "dark"] as const;
 export const SOURCE_HINT: Record<string, string> = {
   rtsp: "rtsp://192.168.1.64:554/Streaming/Channels/101 (credentials go in the fields below)",
   http: "http(s)://host/video.mjpg — MJPEG or HTTP video stream",
-  webcam: "device index (0, 1, …) or /dev/videoN",
+  webcam: "device index (0, 1, …) or /dev/videoN of a camera attached to the server",
+  browser: "browser://local — frames are sent from the Local Camera page of this console",
   file: "path to a video file on the server (absolute or relative to DATA_DIR)",
   demo: "demo://CAM-XX",
 };

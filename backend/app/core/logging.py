@@ -3,7 +3,8 @@
 Every record carries ``timestamp``, ``service``, ``severity`` and ``message``;
 ``camera_id``, ``request_id``/``event_id`` and ``latency_ms`` are attached when
 present either through ``extra=`` or through the context variables below.
-Credentials embedded in URLs are scrubbed from every message.
+Credentials embedded in URLs and ``token=`` query parameters (WebSocket and media URLs
+carry the JWT that way) are scrubbed from every message, including uvicorn's own lines.
 """
 from __future__ import annotations
 
@@ -18,12 +19,24 @@ request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("req
 camera_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("camera_id", default=None)
 
 _CRED_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)([^:/@\s]+):([^@/\s]+)@")
+_TOKEN_RE = re.compile(r"(token=)[^&\s\"']+")
 _CONTEXT_FIELDS = ("camera_id", "request_id", "event_id", "latency_ms", "user", "status")
 
 
 def scrub(text: str) -> str:
-    """Remove ``user:password@`` credentials from any URL inside ``text``."""
-    return _CRED_RE.sub(r"\1***:***@", text)
+    """Remove ``user:password@`` credentials and ``token=`` values from any URL inside ``text``."""
+    return _TOKEN_RE.sub(r"\1***", _CRED_RE.sub(r"\1***:***@", text))
+
+
+class ScrubFilter(logging.Filter):
+    """Scrubs records of loggers with their own handlers (uvicorn logs "WebSocket /ws/...?token=… [accepted]")."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        clean = scrub(msg)
+        if clean != msg:
+            record.msg, record.args = clean, None
+        return True
 
 
 class JsonFormatter(logging.Formatter):
@@ -65,6 +78,10 @@ def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:
     root.setLevel(level.upper())
     for noisy in ("uvicorn.access", "httpx", "urllib3", "multipart"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(name)
+        if not any(isinstance(f, ScrubFilter) for f in lg.filters):
+            lg.addFilter(ScrubFilter())
 
 
 def get_logger(name: str) -> logging.Logger:

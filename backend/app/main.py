@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
-from app.api.routes import alerts, analytics, auth, cameras, demo, evidence, onvif, system, topology, users, vehicles, watchlist, ws
+from app.api.routes import alerts, analytics, auth, cameras, demo, evidence, local_camera, onvif, system, topology, users, vehicles, watchlist, ws
 from app.core.bus import get_bus
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger, request_id_var
@@ -195,7 +195,7 @@ def create_app(start_services: bool = True) -> FastAPI:
         return JSONResponse({"status": "ready" if ok else "not_ready", "mode": runtime.mode, "checks": checks, "startup_errors": runtime.startup_errors},
                             status.HTTP_200_OK if ok else status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    for r in (auth, users, cameras, vehicles, topology, analytics, alerts, watchlist, evidence, system, onvif, demo, ws):
+    for r in (auth, users, cameras, vehicles, topology, analytics, alerts, watchlist, evidence, system, onvif, demo, ws, local_camera):
         app.include_router(r.router)
     return app
 

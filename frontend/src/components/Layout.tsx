@@ -20,6 +20,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/", label: "Command Center", icon: "◎", perm: P.CAMERAS_READ },
       { to: "/cameras", label: "Cameras", icon: "▣", perm: P.CAMERAS_READ },
+      { to: "/local-camera", label: "Local Camera", icon: "◉", perm: P.CAMERAS_CONTROL },
       { to: "/alerts", label: "Alerts", icon: "△", perm: P.ALERTS_READ },
       { to: "/vehicles/search", label: "Vehicle Search", icon: "⌕", perm: P.VEHICLES_SEARCH },
       { to: "/watchlist", label: "Watchlist", icon: "☰", perm: P.WATCHLIST_READ },

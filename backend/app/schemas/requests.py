@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.camera.sources import FAULT_KINDS
 
 COMPASS = Literal["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-SOURCE = Literal["rtsp", "http", "webcam", "file", "demo"]
+SOURCE = Literal["rtsp", "http", "webcam", "browser", "file", "demo"]
 PRIORITY = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 ROLE = Literal["admin", "operator", "analyst", "viewer"]
 _CAMERA_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{1,31}$")
@@ -145,7 +145,7 @@ class _CameraFields(Strict):
     def _uri(self) -> "_CameraFields":
         if self.source_uri and self.source_type:
             u = self.source_uri
-            ok = {"rtsp": ("rtsp://", "rtsps://"), "http": ("http://", "https://"), "demo": ("demo://",)}.get(self.source_type)
+            ok = {"rtsp": ("rtsp://", "rtsps://"), "http": ("http://", "https://"), "browser": ("browser://",), "demo": ("demo://",)}.get(self.source_type)
             if ok and not u.lower().startswith(ok):
                 raise ValueError(f"{self.source_type} source URI must start with {' or '.join(ok)}")
             if self.source_type == "webcam" and not re.fullmatch(r"\d{1,2}|/dev/video\d{1,2}", u):

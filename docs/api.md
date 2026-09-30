@@ -194,6 +194,24 @@ Events the user may not see are dropped on the server. Plate fields are pseudony
 privacy-mode roles. The token is re-checked every 60 s. If it is invalid, expired, or the
 user has been deactivated, the connection is closed with code **4401**.
 
+## WebSocket: `/ws/cameras/{camera_id}/ingest`
+
+Upload socket of the Local Camera page. It needs `cameras:control` and a camera whose
+`source_type` is `browser`. Authenticate with `?token=<JWT>` or `{"token": "..."}` as the
+first message.
+
+* Server → `{"type": "hello", "data": {camera_id, name, enabled, max_in_flight, max_frame_bytes}}`.
+* Client → one binary message per frame (a JPEG of at most 2 MB).
+* Server → `{"type": "ack", "data": {received, rejected, accepted, reason?, backend?}}` for
+  every frame. At most once per second `backend` carries the worker's runtime state
+  (status, message, input/processing fps, frames in/processed/dropped, active tracks,
+  latency, resolution), or `null` when no worker is processing the camera.
+* Client `{"type": "ping"}` → `{"type": "pong", "data": {backend}}`.
+
+Close codes: **4401** unauthenticated, **4403** missing permission, **4404** unknown
+camera, **4400** not a browser camera, **4409** another session took over the camera (the
+old socket is told on its next frame).
+
 ## Roles and permissions
 
 | role | permissions |

@@ -8,6 +8,9 @@ Channels
 * ``control`` – commands from the API to stream workers (start/stop/fault-injection).
 * frames      – latest raw/annotated preview JPEG per camera (Redis keys with TTL).
 * runtime     – latest live processing metrics per camera (Redis hash).
+* input frames – bounded per-camera inbox of JPEGs pushed *into* the system by the API
+  (browser Local Camera uploads) and consumed by that camera's stream worker
+  (Redis list trimmed to ``INPUT_FRAMES_MAX``; oldest frames are dropped).
 
 All publish methods are thread-safe and never raise: a failing bus must not
 take down a camera worker. Failures are logged and counted.
@@ -16,9 +19,11 @@ from __future__ import annotations
 
 import asyncio
 import queue
+import struct
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
@@ -34,6 +39,8 @@ INGEST_GROUP = "ingestors"
 UI_CHANNEL = "nirnay:ui"
 CONTROL_CHANNEL = "nirnay:control"
 RUNTIME_HASH = "nirnay:runtime"
+INPUT_FRAMES_MAX = 3  # per camera: a slow worker drops old uploads instead of growing memory
+_TS = struct.Struct("<d")
 
 
 def ui_event(event_type: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -93,6 +100,18 @@ class EventBus(ABC):
     @abstractmethod
     def get_runtime(self) -> dict[str, dict[str, Any]]: ...
 
+    # input frames (pushed by the API, consumed by a stream worker) ----------------------
+    @abstractmethod
+    def push_input_frame(self, camera_id: str, jpeg: bytes, ts: float | None = None) -> bool:
+        """Queue an uploaded frame; returns ``False`` if it could not be queued."""
+
+    @abstractmethod
+    def pop_input_frame(self, camera_id: str, timeout: float = 1.0) -> tuple[bytes, float] | None:
+        """Oldest queued upload and its capture timestamp, or ``None`` after ``timeout``."""
+
+    @abstractmethod
+    def clear_input_frames(self, camera_id: str) -> None: ...
+
     @abstractmethod
     def ping(self) -> bool: ...
 
@@ -117,6 +136,9 @@ class InMemoryBus(EventBus):
         self._frames: dict[tuple[str, str], tuple[bytes, float]] = {}
         self._runtime: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
+        self._inputs: dict[str, deque[tuple[bytes, float]]] = {}
+        self._inputs_cond = threading.Condition()
+        self.input_frames_dropped = 0
 
     def publish_ingest(self, event: dict[str, Any], timeout: float = 2.0) -> bool:
         with self._seq_lock:
@@ -219,6 +241,31 @@ class InMemoryBus(EventBus):
     def get_runtime(self) -> dict[str, dict[str, Any]]:
         with self._lock:
             return {k: dict(v) for k, v in self._runtime.items()}
+
+    def push_input_frame(self, camera_id: str, jpeg: bytes, ts: float | None = None) -> bool:
+        with self._inputs_cond:
+            q = self._inputs.setdefault(camera_id, deque(maxlen=INPUT_FRAMES_MAX))
+            if len(q) == q.maxlen:
+                self.input_frames_dropped += 1
+            q.append((jpeg, ts or time.time()))
+            self._inputs_cond.notify_all()
+        return True
+
+    def pop_input_frame(self, camera_id: str, timeout: float = 1.0) -> tuple[bytes, float] | None:
+        deadline = time.time() + timeout
+        with self._inputs_cond:
+            while True:
+                q = self._inputs.get(camera_id)
+                if q:
+                    return q.popleft()
+                left = deadline - time.time()
+                if left <= 0:
+                    return None
+                self._inputs_cond.wait(left)
+
+    def clear_input_frames(self, camera_id: str) -> None:
+        with self._inputs_cond:
+            self._inputs.pop(camera_id, None)
 
     def ping(self) -> bool:
         return True
@@ -386,9 +433,39 @@ class RedisBus(EventBus):
         now = time.time()
         for k, v in raw.items():
             state = orjson.loads(v)
-            if now - float(state.get("updated", 0)) < 30:  # ignore state from dead workers
+            if now - float(state.get("updated_at") or 0) < 30:  # ignore state from dead workers
                 out[k.decode()] = state
         return out
+
+    def push_input_frame(self, camera_id: str, jpeg: bytes, ts: float | None = None) -> bool:
+        key = f"nirnay:input:{camera_id}"
+        try:
+            pipe = self._r.pipeline()
+            pipe.lpush(key, _TS.pack(ts or time.time()) + jpeg)
+            pipe.ltrim(key, 0, INPUT_FRAMES_MAX - 1)  # newest N kept: the worker never falls behind by more than N frames
+            pipe.expire(key, 15)
+            pipe.execute()
+            return True
+        except Exception:
+            self.publish_failures += 1
+            return False
+
+    def pop_input_frame(self, camera_id: str, timeout: float = 1.0) -> tuple[bytes, float] | None:
+        try:
+            got = self._r.brpop([f"nirnay:input:{camera_id}"], timeout=max(0.1, timeout))
+        except Exception:
+            time.sleep(min(timeout, 1.0))
+            return None
+        if not got:
+            return None
+        blob = got[1]
+        return blob[_TS.size:], _TS.unpack_from(blob)[0]
+
+    def clear_input_frames(self, camera_id: str) -> None:
+        try:
+            self._r.delete(f"nirnay:input:{camera_id}")
+        except Exception:
+            pass
 
     def ping(self) -> bool:
         try:
