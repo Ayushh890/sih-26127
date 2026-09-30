@@ -65,7 +65,7 @@ export function AppRoutes() {
         <Route path="cameras/:id" element={<Guard perm={P.CAMERAS_READ}><CameraDetail /></Guard>} />
         <Route path="vehicles/search" element={<Guard perm={P.VEHICLES_SEARCH}><VehicleSearch /></Guard>} />
         <Route path="vehicles/:ref" element={<Guard perm={P.TRAJECTORY_READ}><VehicleDetail /></Guard>} />
-        <Route path="observations/:id" element={<Guard perm={P.VEHICLES_SEARCH}><ObservationDetail /></Guard>} />
+        <Route path="observations/:id" element={<Guard perm={P.TRAJECTORY_READ}><ObservationDetail /></Guard>} />
         <Route path="alerts" element={<Guard perm={P.ALERTS_READ}><Alerts /></Guard>} />
         <Route path="alerts/:ref" element={<Guard perm={P.ALERTS_READ}><AlertDetail /></Guard>} />
         <Route path="analytics" element={<Guard perm={P.ANALYTICS_READ}><Analytics /></Guard>} />

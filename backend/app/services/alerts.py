@@ -22,6 +22,13 @@ from app.db.models import Alert, AuditLog
 log = get_logger("alerts")
 
 SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL")
+SYSTEM_ACTOR = {"username": "system", "role": "system"}
+
+
+def _audit_system(db: Session, action: str, a: Alert, before: str, note: str | None) -> None:
+    """Automatic transitions appear in the alert's history next to operator actions."""
+    db.add(AuditLog(user_id=None, username=SYSTEM_ACTOR["username"], role=SYSTEM_ACTOR["role"], action=f"alert.{action}",
+                    resource_type="alert", resource_id=a.code, details={"from": before, "to": a.status, "note": note, "automatic": True}))
 STATUSES = ("NEW", "ACKNOWLEDGED", "RESOLVED")
 
 
@@ -82,6 +89,7 @@ class AlertEngine:
             flapping.occurrences += 1
             flapping.reason = reason
             flapping.updated_at = now
+            _audit_system(db, "auto_reopen", flapping, "RESOLVED", f"condition recurred within the {cooldown:.0f}s cooldown: {reason}"[:2000])
             db.flush()
             log.info("alert re-opened %s %s (recurred within cooldown)", flapping.code, type, extra={"camera_id": camera_id})
             self._publish("alert_updated", flapping)
@@ -99,7 +107,9 @@ class AlertEngine:
         n = 0
         now = datetime.now(timezone.utc)
         for a in db.scalars(select(Alert).where(Alert.dedup_key == dedup_key, Alert.status != "RESOLVED")):
+            before = a.status
             a.status, a.resolved_by, a.resolved_at, a.resolution_note = "RESOLVED", "system", now, note
+            _audit_system(db, "auto_resolve", a, before, note)
             n += 1
             self._publish("alert_updated", a)
         if n:

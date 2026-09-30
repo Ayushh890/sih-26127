@@ -193,6 +193,7 @@ export interface ObservationRow {
   match_reasons: string[] | null;
   evidence_id?: string | null;
   is_demo: boolean;
+  new_vehicle?: boolean;
   previous_observation_id?: number | null;
 }
 
@@ -278,6 +279,7 @@ export function obsToDetection(o: ObservationRow): Detection {
     match_reasons: o.match_reasons,
     evidence_id: o.evidence_id,
     is_demo: o.is_demo,
+    new_vehicle: o.new_vehicle ?? o.match_confidence_level === "NEW",
   };
 }
 

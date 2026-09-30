@@ -72,10 +72,12 @@ alert status/time, audit time/user). On PostgreSQL the schema is created and upg
 Alembic (`alembic upgrade head` runs automatically at API start-up); SQLite databases are
 created directly from the same SQLAlchemy models.
 
-PostgreSQL is the production database. The Compose file uses the `postgis/postgis` image so
-the spatial extension is available, but the current schema stores coordinates as
-latitude/longitude columns and road geometry as GeoJSON; distance and path computations
-are done by the in-process topology graph. SQLite (WAL mode) is supported for the
+PostgreSQL is the production database. The Compose file uses the `postgis/postgis` image.
+The application stores coordinates as latitude/longitude columns and road geometry as
+GeoJSON. When PostGIS is available, the migration also adds generated `geom` columns
+(points from latitude/longitude, lines from the GeoJSON) with GiST indexes, so spatial SQL
+works directly on the tables. Routing and distance calculations inside the application
+use the in-process topology graph. SQLite (WAL mode) is supported for the
 zero-configuration demo and for tests.
 
 ## Real-time channel

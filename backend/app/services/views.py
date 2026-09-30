@@ -23,7 +23,8 @@ def observation_dict(o: VehicleObservation, vehicle_code: str | None = None, cam
         "speed_kmh": o.speed_kmh, "speed_is_estimate": o.speed_kmh is not None, "direction": o.direction, "heading_deg": o.heading_deg,
         "motion": o.motion, "lane": o.lane, "global_vehicle_id": o.global_vehicle_id, "vehicle_code": vehicle_code,
         "previous_observation_id": o.previous_observation_id, "match_score": o.match_score,
-        "match_confidence_level": o.match_confidence_level, "match_reasons": o.match_reasons or [],
+        "match_confidence_level": o.match_confidence_level, "confidence_level": o.match_confidence_level,
+        "new_vehicle": o.match_confidence_level == "NEW", "match_reasons": o.match_reasons or [],
         "evidence_id": o.evidence_id, "is_demo": o.is_demo,
     }
 

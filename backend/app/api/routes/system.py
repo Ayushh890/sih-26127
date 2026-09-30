@@ -195,7 +195,7 @@ def patch_section(section: str, body: SettingsUpdate, request: Request, user: Cu
     except KeyError:
         raise not_found("settings section") from None
     except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     value = update_section(db, section, body.value, user.username)
     audit.record(db, user.as_dict(), "settings.update", "settings", section, {"patch": body.value, "before": before}, client_ip(request))
     return {"section": section, "value": value}

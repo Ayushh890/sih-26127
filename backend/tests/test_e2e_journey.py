@@ -206,3 +206,63 @@ def test_appearance_only_link_is_capped_and_cannot_change_plate(client: TestClie
     assert other["vehicle_code"] != first["vehicle_code"]
     o = client.get(f"/api/observations/{other['id']}", headers=admin).json()
     assert any("registered plate" in r or "disagree" in r for r in o["match_reasons"])
+
+
+def test_congestion_and_travel_times_historical_anchor(client: TestClient, analyst: dict[str, str], network: dict[str, str]) -> None:
+    until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(T0 + 600))
+    r = client.get("/api/analytics/congestion", params={"scope": "live", "until": until}, headers=analyst)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["until"].startswith(until[:16]) and body["levels"][-1] == "NO_DATA"
+    assert {c["camera_id"] for c in body["cameras"]} >= set(network.values())
+    r = client.get("/api/analytics/travel-times", params={"scope": "live", "until": until, "window_s": 3600}, headers=analyst)
+    assert r.status_code == 200 and r.json()["until"].startswith(until[:16])
+    # a future anchor is clamped to now
+    r = client.get("/api/analytics/congestion", params={"scope": "live", "until": "2100-01-01T00:00:00Z"}, headers=analyst)
+    assert r.json()["until"] < "2100"
+
+
+def test_overview_scope_and_incident_scope(client: TestClient, analyst: dict[str, str], network: dict[str, str]) -> None:
+    r = client.get("/api/analytics/overview", params={"scope": "live"}, headers=analyst)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["synthetic"] is False and set(body["scopes"]) <= {"live"}
+    assert "E2E-A" in {c["camera_id"] for c in body["cameras"]}
+    start = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(T0 - 60))
+    r = client.post("/api/analytics/incident-impact", json={"camera_id": "E2E-B", "start": start}, headers=analyst)
+    assert r.status_code == 200, r.text
+    assert r.json()["scope"] == "live" and r.json()["synthetic"] is False
+
+
+def test_automatic_alert_transitions_are_audited(client: TestClient, operator: dict[str, str]) -> None:
+    from app.db.session import session_scope
+    from app.services.alerts import AlertEngine
+    from app.services.settings_service import settings_cache
+
+    engine = AlertEngine(None)
+    with session_scope() as db:
+        cfg = settings_cache.section(db, "alerts")
+        kw = dict(type="CAMERA_OFFLINE", title="E2E-C offline", reason="no frames", details={}, dedup_key="pytest:auto:E2E-C", camera_id="E2E-C")
+        a = engine.raise_alert(db, cfg, **kw)
+        code = a.code
+        assert engine.auto_resolve(db, "pytest:auto:E2E-C", "camera back online") == 1
+        again = engine.raise_alert(db, cfg, **kw)
+        assert again.code == code and again.status == "NEW"
+    r = client.get(f"/api/alerts/{code}", headers=operator)
+    assert r.status_code == 200, r.text
+    hist = [(h["action"], h["username"], h["details"]["to"]) for h in r.json()["history"]]
+    assert ("alert.auto_resolve", "system", "RESOLVED") in hist and ("alert.auto_reopen", "system", "NEW") in hist
+
+
+def test_demo_timeline_plates_are_pseudonymised_for_privacy_roles() -> None:
+    from app.db.session import session_scope
+    from app.services import demo_control, privacy
+
+    with session_scope() as db:
+        tl = demo_control.timeline(db)
+    raw = [e["plate"] for e in tl["events"] if e["plate"]]
+    assert raw, "scenario has scripted plates"
+    masked = privacy.mask(tl)
+    text = str(masked)
+    assert not any(p in text for p in raw)
+    assert all(e["plate"] is None or e["plate"].startswith("PSN-") for e in masked["events"])

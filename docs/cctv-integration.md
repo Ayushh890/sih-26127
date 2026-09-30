@@ -33,7 +33,7 @@ rejected.
 
 ## Adding a camera
 
-1. **Discover (optional).** Use Cameras → *Add camera* → *ONVIF discovery*, or call
+1. **Discover (optional).** Use Cameras → *Add camera* → *Discover cameras on the network*, or call
    `POST /api/onvif/discover`. This sends a WS-Discovery probe on the local network
    segment and lists the devices that answer.
 2. **Probe (optional).** `POST /api/onvif/probe` with the device `xaddr` and credentials
@@ -113,8 +113,8 @@ configuration error, such as an unsupported URI).
 
 ### Fault injection
 
-Operators with `cameras:control` can test resilience on any camera. The UI offers
-**Simulate fault** and **Simulate disconnect**, or you can call
+Operators with `cameras:control` can test resilience on any camera. The camera page offers
+**Inject fault** and **Simulate disconnect**, or you can call
 `POST /api/cameras/{id}/simulate-fault` with `{"kind": "offline"|"blur"|"low_fps"|"dark", "seconds": 1–600}`.
 The fault is applied inside the source, so the real health monitor and alert rules react
 exactly as they would to a genuine failure. **Clear faults** ends it early.

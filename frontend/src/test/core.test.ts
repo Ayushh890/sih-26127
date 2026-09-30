@@ -144,7 +144,7 @@ describe("api client", () => {
       "fetch",
       vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: [{ loc: ["body", "processing_fps"], msg: "must be > 0" }] }), { status: 422 })),
     );
-    const err = await api.get("/api/y").catch((e) => e);
+    const err = (await api.get("/api/y").catch((e: unknown) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.status).toBe(422);
     expect(err.message).toBe("processing_fps: must be > 0");

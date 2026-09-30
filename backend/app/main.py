@@ -159,7 +159,7 @@ def create_app(start_services: bool = True) -> FastAPI:
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         # never echo submitted values back (they may contain passwords or stream credentials)
         errors = [{"loc": e.get("loc"), "msg": e.get("msg"), "type": e.get("type")} for e in exc.errors()]
-        return JSONResponse({"detail": errors}, status.HTTP_422_UNPROCESSABLE_ENTITY)
+        return JSONResponse({"detail": errors}, status.HTTP_422_UNPROCESSABLE_CONTENT)
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:

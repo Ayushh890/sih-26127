@@ -75,7 +75,7 @@ def create_edge(body: EdgeCreate, request: Request, user: CurrentUser = Depends(
         if db.get(Camera, cid) is None:
             raise not_found(f"camera {cid}")
     if body.path and any(len(p) != 2 or not (-90 <= p[0] <= 90 and -180 <= p[1] <= 180) for p in body.path):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "path must be a list of [lat, lon] pairs")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "path must be a list of [lat, lon] pairs")
     made = [_make(db, body, body.from_camera_id, body.to_camera_id)]
     if body.bidirectional:
         made.append(_make(db, body, body.to_camera_id, body.from_camera_id))
@@ -96,7 +96,7 @@ def update_edge(edge_id: int, body: EdgeUpdate, request: Request, user: CurrentU
     if "path" in changes:
         pts = changes.pop("path") or []
         if pts and (len(pts) < 2 or any(len(p) != 2 or not (-90 <= p[0] <= 90 and -180 <= p[1] <= 180) for p in pts)):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "path must be a list of at least two [lat, lon] pairs")
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "path must be a list of at least two [lat, lon] pairs")
         e.path_geojson = {"type": "LineString", "coordinates": [[p[1], p[0]] for p in pts]} if pts else None
         changes["path_points"] = len(pts)
     for k, v in changes.items():
