@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-ink-950: #070b14;
+  --color-ink-900: #0b1220;
+  --color-ink-850: #0f1829;
+  --color-ink-800: #131e33;
+  --color-ink-700: #1c2a44;
+  --color-ink-600: #2a3b5c;
+  --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+html, body, #root { height: 100%; }
+body { font-size: 13px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #2a3b5c; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.leaflet-container { background: #070b14; font-family: inherit; }
+.leaflet-tooltip.nirnay-tip {
+  background: #0f1829; color: #e2e8f0; border: 1px solid #2a3b5c; box-shadow: none; font-size: 11px; padding: 2px 6px;
+}
+.leaflet-tooltip.nirnay-tip::before { display: none; }
+.leaflet-control-attribution { display: none; }
+.leaflet-bar a { background: #131e33; color: #cbd5e1; border-color: #2a3b5c; }
+.leaflet-bar a:hover { background: #1c2a44; }
+
+@layer components {
+  .input {
+    @apply w-full rounded border border-ink-600 bg-ink-900 px-2 py-1 text-[13px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none disabled:opacity-50;
+  }
+  .btn {
+    @apply inline-flex items-center gap-1 rounded border border-ink-600 bg-ink-800 px-2.5 py-1 text-[12px] font-medium text-slate-200 hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary { @apply border-cyan-600 bg-cyan-700/80 text-white hover:bg-cyan-600; }
+  .btn-danger { @apply border-rose-700 bg-rose-900/60 text-rose-100 hover:bg-rose-800; }
+  .btn-ghost { @apply border-transparent bg-transparent hover:bg-ink-700; }
+  .label { @apply mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-slate-400; }
+  .th { @apply sticky top-0 z-[1] bg-ink-850 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400; }
+  .td { @apply border-t border-ink-700/70 px-2 py-1.5 align-top; }
+  .mono { @apply font-mono text-[12px]; }
+}
+
+.nirnay-cam-label span {
+  display: inline-block;
+  white-space: nowrap;
+  font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #cbd5e1;
+  text-shadow: 0 0 3px #000, 0 0 2px #000;
+}
+@keyframes nirnay-pulse-kf {
+  0%, 100% { stroke-opacity: 1; stroke-width: 2; }
+  50% { stroke-opacity: 0.2; stroke-width: 8; }
+}
+.nirnay-pulse { animation: nirnay-pulse-kf 1.4s ease-in-out infinite; }

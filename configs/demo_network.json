@@ -1,0 +1,51 @@
+{
+  "name": "Lucknow central corridor (SYNTHETIC DEMO NETWORK)",
+  "synthetic": true,
+  "notice": "All cameras, vehicles and plates in this network are synthetic and are rendered by the demo traffic generator. They are labelled is_demo=true everywhere.",
+  "center": [26.8520, 80.9520],
+  "zoom": 14,
+  "cycle_seconds": 1800,
+  "fps": 10,
+  "frame_size": [1920, 1080],
+  "cameras": [
+    {"id": "CAM-01", "name": "Charbagh Station Junction", "lat": 26.8320, "lon": 80.9230, "road_name": "Station Road", "zone": "Charbagh", "direction": "NE", "lane_count": 2, "camera_type": "ANPR", "scene": {"sky": [205, 190, 170], "ground": [96, 98, 100], "buildings": 7, "trees": 3, "seed": 11}},
+    {"id": "CAM-02", "name": "Hussainganj Crossing", "lat": 26.8380, "lon": 80.9330, "road_name": "Vidhan Sabha Marg", "zone": "Hussainganj", "direction": "NE", "lane_count": 2, "camera_type": "ANPR", "scene": {"sky": [200, 185, 160], "ground": [88, 90, 92], "buildings": 5, "trees": 6, "seed": 22}},
+    {"id": "CAM-03", "name": "Hazratganj Chauraha", "lat": 26.8505, "lon": 80.9460, "road_name": "Mahatma Gandhi Marg", "zone": "Hazratganj", "direction": "NE", "lane_count": 2, "camera_type": "ANPR", "scene": {"sky": [210, 196, 176], "ground": [92, 92, 95], "buildings": 9, "trees": 2, "seed": 33}},
+    {"id": "CAM-04", "name": "Sikandarbagh One-way", "lat": 26.8570, "lon": 80.9560, "road_name": "Ashok Marg (one-way)", "zone": "Sikandarbagh", "direction": "NE", "lane_count": 2, "camera_type": "ANPR", "one_way": true, "scene": {"sky": [196, 186, 168], "ground": [100, 100, 102], "buildings": 4, "trees": 8, "seed": 44}},
+    {"id": "CAM-05", "name": "Kaiserbagh Crossing", "lat": 26.8560, "lon": 80.9300, "road_name": "Kaiserbagh Road", "zone": "Kaiserbagh", "direction": "N", "lane_count": 2, "camera_type": "ANPR", "scene": {"sky": [206, 192, 172], "ground": [90, 92, 90], "buildings": 6, "trees": 5, "seed": 55}},
+    {"id": "CAM-06", "name": "Polytechnic Chauraha", "lat": 26.8720, "lon": 80.9900, "road_name": "Faizabad Road", "zone": "Gomti Nagar", "direction": "NE", "lane_count": 2, "camera_type": "ANPR", "scene": {"sky": [214, 200, 182], "ground": [94, 96, 98], "buildings": 8, "trees": 4, "seed": 66}}
+  ],
+  "roads": [
+    {"id": "R-01", "name": "Station Road", "from": "CAM-01", "to": "CAM-02", "one_way": false, "path": [[26.8320, 80.9230], [26.8342, 80.9262], [26.8361, 80.9301], [26.8380, 80.9330]]},
+    {"id": "R-02", "name": "Vidhan Sabha Marg", "from": "CAM-02", "to": "CAM-03", "one_way": false, "path": [[26.8380, 80.9330], [26.8421, 80.9365], [26.8463, 80.9412], [26.8505, 80.9460]]},
+    {"id": "R-03", "name": "Ashok Marg (one-way)", "from": "CAM-03", "to": "CAM-04", "one_way": true, "path": [[26.8505, 80.9460], [26.8528, 80.9497], [26.8551, 80.9531], [26.8570, 80.9560]]},
+    {"id": "R-04", "name": "Faizabad Road", "from": "CAM-04", "to": "CAM-06", "one_way": false, "path": [[26.8570, 80.9560], [26.8605, 80.9652], [26.8641, 80.9741], [26.8680, 80.9822], [26.8720, 80.9900]]},
+    {"id": "R-05", "name": "Kaiserbagh Road", "from": "CAM-05", "to": "CAM-03", "one_way": false, "path": [[26.8560, 80.9300], [26.8548, 80.9352], [26.8527, 80.9408], [26.8505, 80.9460]]},
+    {"id": "R-06", "name": "Lalbagh Link Road", "from": "CAM-02", "to": "CAM-05", "one_way": false, "path": [[26.8380, 80.9330], [26.8436, 80.9322], [26.8499, 80.9311], [26.8560, 80.9300]]},
+    {"id": "R-07", "name": "Shahnajaf Road (return)", "from": "CAM-04", "to": "CAM-03", "one_way": false, "unmonitored": true, "path": [[26.8570, 80.9560], [26.8590, 80.9505], [26.8562, 80.9468], [26.8505, 80.9460]]},
+    {"id": "R-08", "name": "Cantonment Road", "one_way": false, "unmonitored": true, "path": [[26.8320, 80.9230], [26.8295, 80.9330], [26.8330, 80.9440], [26.8395, 80.9520]]},
+    {"id": "R-09", "name": "Rana Pratap Marg", "one_way": false, "unmonitored": true, "path": [[26.8505, 80.9460], [26.8470, 80.9540], [26.8455, 80.9640], [26.8480, 80.9760]]},
+    {"id": "R-10", "name": "Gomti Barrage Road", "one_way": false, "unmonitored": true, "path": [[26.8570, 80.9560], [26.8650, 80.9540], [26.8700, 80.9610], [26.8745, 80.9720]]},
+    {"id": "R-11", "name": "Nishatganj Road", "one_way": false, "unmonitored": true, "path": [[26.8745, 80.9720], [26.8735, 80.9810], [26.8720, 80.9900]]},
+    {"id": "R-12", "name": "Aminabad Road", "one_way": false, "unmonitored": true, "path": [[26.8560, 80.9300], [26.8500, 80.9230], [26.8420, 80.9200], [26.8320, 80.9230]]}
+  ],
+  "routes": [
+    {"id": "A", "cameras": ["CAM-01", "CAM-02", "CAM-03", "CAM-04", "CAM-06"], "rate_per_min": 3.2},
+    {"id": "B", "cameras": ["CAM-05", "CAM-03", "CAM-04", "CAM-06"], "rate_per_min": 1.6},
+    {"id": "C", "cameras": ["CAM-01", "CAM-02", "CAM-05"], "rate_per_min": 1.2},
+    {"id": "D", "cameras": ["CAM-02", "CAM-03"], "rate_per_min": 0.8}
+  ],
+  "local_rate_per_min": 1.0,
+  "speed_kmh": [24, 44],
+  "signal_delay_s": [0, 25],
+  "obscured_plate_ratio": 0.06,
+  "scenario": {
+    "congestion": {"camera_id": "CAM-03", "start": 180, "end": 510, "speed_kmh": [1, 5], "extra_rate_per_min": 10.0, "upstream_delay_factor": 2.6},
+    "cloned_plate": {"plate": "UP32HN4412", "first": {"camera_id": "CAM-01", "t": 100, "kind": "sedan", "color": [235, 235, 235]}, "second": {"camera_id": "CAM-06", "t": 145, "kind": "suv", "color": [40, 40, 185]}},
+    "wrong_way": {"camera_id": "CAM-04", "t": 210, "plate": "UP32FW3190", "kind": "hatch", "color": [30, 140, 220]},
+    "obscured": {"route": "A", "t": 60, "kind": "suv", "color": [20, 110, 230], "roof": [35, 35, 35], "sticker": true},
+    "circling": {"camera_id": "CAM-05", "plate": "UP32KT7788", "times": [40, 235, 430], "kind": "sedan", "color": [120, 40, 110]},
+    "tracked": {"route": "A", "t": 30, "plate": "UP32GM2024", "kind": "sedan", "color": [190, 120, 40]}
+  },
+  "geometry": {"focal_px": 2600, "camera_height_m": 2.2, "vanishing_point": [0.5, 0.15], "lane_width_m": 2.8, "z_far_m": 130, "z_exit_m": 5.0, "z_ref_m": 20}
+}

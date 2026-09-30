@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/
+models/*.onnx
+models/*.yaml
+!models/README.md
+frontend/node_modules/
+frontend/dist/
+*.log
+frontend/.api-shapes.json
+*.tsbuildinfo

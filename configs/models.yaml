@@ -1,0 +1,46 @@
+# NIRNAY model configuration.
+#
+# Every model is loaded through app/ml/registry.py; nothing else in the codebase
+# references a model path. Paths are relative to MODELS_DIR (default: ./models).
+# Swap a model by editing this file (or pointing MODEL_CONFIG at another file) --
+# no code changes are needed as long as the backend type is supported.
+#
+# Licences of the default weights (see models/README.md):
+#   yolox_nano.onnx                         Apache-2.0  (Megvii YOLOX, COCO-trained)
+#   yolo-v9-t-384-license-plates-end2end    MIT         (ankandrew/open-image-models)
+#   cct_s_v2_global.onnx                    MIT         (ankandrew/fast-plate-ocr)
+#   reid_mobilenetv2_gap.onnx               Apache-2.0  (ONNX model zoo MobileNetV2, pooled features)
+
+device: auto            # auto | cpu | gpu (overridden by INFERENCE_DEVICE env if set)
+
+vehicle_detector:
+  backend: yolox_onnx   # yolox_onnx | motion
+  path: yolox_nano.onnx
+  input_size: 416
+  nms_iou: 0.45
+  # model class id -> NIRNAY vehicle class. Models trained on Indian datasets can
+  # map additional classes (e.g. auto_rickshaw, van) here.
+  classes:
+    2: car
+    3: motorcycle
+    5: bus
+    7: truck
+  fallback: motion      # used automatically if the model file is missing
+
+plate_detector:
+  backend: yolov9_onnx  # yolov9_onnx | contour
+  path: yolo-v9-t-384-license-plates-end2end.onnx
+  input_size: 384
+  confidence: 0.30
+  fallback: contour
+
+ocr:
+  backend: cct_onnx
+  path: cct_s_v2_global.onnx
+  config: cct_s_v2_global_plate_config.yaml
+
+reid:
+  backend: mobilenetv2_onnx   # mobilenetv2_onnx | color_histogram
+  path: reid_mobilenetv2_gap.onnx
+  input_size: 224
+  fallback: color_histogram
