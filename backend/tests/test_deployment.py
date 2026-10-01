@@ -18,7 +18,7 @@ def test_hosted_postgres_urls_use_psycopg(url: str) -> None:
 
 def test_default_sqlite_lives_in_data_dir(tmp_path: Path) -> None:
     s = Settings(DATABASE_URL="", DATA_DIR=tmp_path)
-    assert s.DATABASE_URL == f"sqlite:///{tmp_path / 'nirnay.db'}"
+    assert s.DATABASE_URL == f"sqlite:///{(tmp_path / 'nirnay.db').as_posix()}"
 
 
 def test_demo_cameras_subset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -31,7 +31,7 @@ def test_demo_cameras_subset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("DEMO_CAMERAS", "CAM-01, CAM-03")
     config.get_settings.cache_clear()
     try:
-        reset_engine(f"sqlite:///{tmp_path / 'seed.db'}")
+        reset_engine(f"sqlite:///{(tmp_path / 'seed.db').as_posix()}")
         create_schema()
         with session_scope() as db:
             added = seed_demo_network(db, enable=True)["cameras_added"]

@@ -18,7 +18,7 @@ def _cfg(url: str):  # noqa: ANN202
 
 
 def test_upgrade_matches_models_and_downgrades(tmp_path: Path) -> None:
-    url = f"sqlite:///{tmp_path / 'migrate.db'}"
+    url = f"sqlite:///{(tmp_path / 'migrate.db').as_posix()}"
     cfg = _cfg(url)
     command.upgrade(cfg, "head")
     command.check(cfg)  # raises if the models and the migrated schema differ

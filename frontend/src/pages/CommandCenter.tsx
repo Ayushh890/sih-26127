@@ -5,7 +5,7 @@
  * /api/demo/timeline; live via vehicle_matched, trajectory_updated, alert_*, camera_status_changed,
  * analytics_updated.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
@@ -448,11 +448,9 @@ function DetectionsFeed({ scope, resolvedScope, className }: { scope: string | u
   const canRead = has(P.TRAJECTORY_READ);
   const [live, setLive] = useState<Detection[]>([]);
   const [paused, setPaused] = useState(false);
-  const [liveScope, setLiveScope] = useState(scope);
-  if (liveScope !== scope) {
-    setLiveScope(scope);
+  useEffect(() => {
     setLive([]);
-  }
+  }, [scope]);
 
   // Seed with the most recent persisted sightings so the feed is not blank on load.
   const seed = useQuery({

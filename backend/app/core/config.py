@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -61,7 +62,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 480
     ENCRYPTION_KEY: str = ""  # Fernet key; derived from JWT_SECRET in development if empty
     PSEUDONYM_SECRET: str = ""  # HMAC key for plate pseudonyms; derived if empty
-    CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
     RATE_LIMIT_PER_MINUTE: int = 600
     LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
     PRIVACY_MODE: bool = True  # pseudonymise plates for analyst/viewer roles
@@ -106,8 +107,21 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, v: object) -> object:
-        if isinstance(v, str) and not v.strip().startswith("["):
-            return [o.strip() for o in v.split(",") if o.strip()]
+        # Accept comma-separated ("a,b"), JSON list ('["a","b"]'), or an actual list.
+        # NoDecode above prevents pydantic-settings from JSON-decoding .env values
+        # itself, so we handle both formats here for fresh clones using .env.example.
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return []
+            if s.startswith("["):
+                try:
+                    parsed = json.loads(s)
+                    if isinstance(parsed, list):
+                        return [str(o).strip() for o in parsed if str(o).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [o.strip() for o in s.split(",") if o.strip()]
         return v
 
     @field_validator("DATABASE_URL", mode="before")
@@ -120,11 +134,40 @@ class Settings(BaseSettings):
                     return "postgresql+psycopg://" + v[len(prefix):]
         return v
 
+    @field_validator("DATA_DIR", "MODELS_DIR", "MODEL_CONFIG", "DEMO_NETWORK_CONFIG", mode="before")
+    @classmethod
+    def _resolve_repo_paths(cls, v: object) -> object:
+        # Allow relative paths in .env (e.g. DATA_DIR=data); resolve them against
+        # the repository root so the SQLite default and model loading work
+        # regardless of the process working directory (backend/ vs repo root).
+        if isinstance(v, str) and v and not Path(v).is_absolute():
+            return str(REPO_ROOT / v)
+        return v
+
+    @field_validator("FRONTEND_DIR", mode="before")
+    @classmethod
+    def _resolve_frontend_dir(cls, v: object) -> object:
+        if isinstance(v, str) and v and not Path(v).is_absolute():
+            return str(REPO_ROOT / v)
+        return v
+
     @model_validator(mode="after")
     def _default_sqlite(self) -> "Settings":
         # keep the zero-config database next to the evidence, i.e. on the data volume
         if not self.DATABASE_URL:
-            self.DATABASE_URL = f"sqlite:///{self.DATA_DIR / 'nirnay.db'}"
+            # as_posix(): Windows backslashes (C:\...) produce an invalid
+            # SQLAlchemy URL (backslashes get percent-encoded and the file lands
+            # in the wrong place, especially with spaces in the path).
+            self.DATABASE_URL = f"sqlite:///{self.DATA_DIR.joinpath('nirnay.db').as_posix()}"
+        if self.WORKER_SHARD:
+            try:
+                idx, count = (int(p) for p in self.WORKER_SHARD.split("/"))
+            except ValueError:
+                raise ValueError("WORKER_SHARD must look like 'index/count', e.g. '0/1'")
+            if count < 1:
+                raise ValueError("WORKER_SHARD count must be >= 1")
+            if not 0 <= idx < count:
+                raise ValueError("WORKER_SHARD index must satisfy 0 <= index < count")
         return self
 
     # --- derived helpers -------------------------------------------------------
@@ -174,6 +217,16 @@ class Settings(BaseSettings):
                 problems.append("ENCRYPTION_KEY must be set (Fernet key) in production")
             if self.DEMO_USERS:
                 problems.append("DEMO_USERS must be false in production")
+            if self.SEED_DEMO or self.DEMO_AUTOSTART:
+                problems.append("SEED_DEMO and DEMO_AUTOSTART must be false in production (demo data is synthetic)")
+            if self.DEMO_PASSWORD in ("nirnay-demo", ""):
+                problems.append("DEMO_PASSWORD must be changed from the default demo value in production")
+            if not self.ADMIN_PASSWORD:
+                problems.append("ADMIN_PASSWORD must be set to bootstrap the production administrator")
+            if not self.PRIVACY_MODE:
+                problems.append("PRIVACY_MODE must stay enabled in production (plate pseudonymisation)")
+            if "*" in self.CORS_ORIGINS:
+                problems.append("CORS_ORIGINS must not contain '*' in production")
         return problems
 
 

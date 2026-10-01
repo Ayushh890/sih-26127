@@ -1,0 +1,7 @@
+# Keep shell scripts LF-only so run.sh works after a Windows checkout
+# (core.autocrlf=true would otherwise add CRLF and break the shebang).
+run.sh text eol=lf
+*.sh text eol=lf
+docker/start.sh text eol=lf
+# Windows launchers keep CRLF.
+*.bat text eol=crlf

@@ -43,6 +43,12 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
 
@@ -55,13 +61,21 @@ services:
       WORKER_ID: worker-1
     volumes: [nirnay-data:/data]
     depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
       backend: { condition: service_healthy }
     restart: unless-stopped
 
   frontend:
     build: { context: ., dockerfile: docker/frontend.Dockerfile }
-    depends_on: [backend]
+    depends_on:
+      backend: { condition: service_healthy }
     ports: ["3000:3000"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:

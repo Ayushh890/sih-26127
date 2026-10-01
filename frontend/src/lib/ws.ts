@@ -6,7 +6,7 @@
  * connection state so the UI can show when it is *not* live instead of silently going stale.
  */
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { tokenStore } from "./api";
+import { backendBase, tokenStore } from "./api";
 
 export type EventType =
   | "vehicle_detected"
@@ -157,6 +157,10 @@ export class EventStream {
 }
 
 function defaultUrl(token: string): string {
+  const base = backendBase();
+  if (base) {
+    return `${base.replace(/^http/, "ws")}/ws/events?token=${encodeURIComponent(token)}`;
+  }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${location.host}/ws/events?token=${encodeURIComponent(token)}`;
 }

@@ -35,7 +35,7 @@ ensure_env() {
   fi
 }
 
-have_docker() { command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; }
+have_docker() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; }
 
 run_docker() {
   have_docker || die "Docker with the compose plugin is required (or use ./run.sh dev)"

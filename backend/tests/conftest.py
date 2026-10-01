@@ -10,7 +10,7 @@ from pathlib import Path
 _TMP = Path(tempfile.mkdtemp(prefix="nirnay-test-"))
 os.environ.update({
     "APP_ENV": "test",
-    "DATABASE_URL": f"sqlite:///{_TMP / 'test.db'}",
+    "DATABASE_URL": f"sqlite:///{(_TMP / 'test.db').as_posix()}",
     "DATA_DIR": str(_TMP / "data"),
     "REDIS_URL": "",
     "WORKER_MODE": "api-only",

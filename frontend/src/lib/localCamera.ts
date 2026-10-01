@@ -8,7 +8,7 @@
  * counters come from the server's acks — "received" is what the backend actually accepted.
  */
 import { useSyncExternalStore } from "react";
-import { tokenStore } from "./api";
+import { backendBase, tokenStore } from "./api";
 import type { CameraRuntime } from "../components/cameras/model";
 
 export type UplinkState = "idle" | "connecting" | "streaming" | "reconnecting" | "failed";
@@ -190,6 +190,10 @@ export class FrameUplink {
 }
 
 function defaultUrl(cameraId: string, token: string): string {
+  const base = backendBase();
+  if (base) {
+    return `${base.replace(/^http/, "ws")}/ws/cameras/${encodeURIComponent(cameraId)}/ingest?token=${encodeURIComponent(token)}`;
+  }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${location.host}/ws/cameras/${encodeURIComponent(cameraId)}/ingest?token=${encodeURIComponent(token)}`;
 }

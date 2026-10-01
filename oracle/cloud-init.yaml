@@ -1,0 +1,12 @@
+#cloud-config
+# NIRNAY on Oracle Cloud Always Free: paste this into the "cloud-init script"
+# box (Show advanced options → Paste cloud-init script) when creating the VM.
+# On first boot it installs Docker, clones the repo, generates secrets and
+# starts the full stack. Watch progress:  sudo tail -f /var/log/nirnay-firstboot.log
+# Login details land in:  /root/nirnay-credentials.txt
+# Then open ports 3000 (console) and 8000 (API, optional) in the subnet security list.
+runcmd:
+  - mkdir -p /opt/nirnay-bootstrap
+  - curl -fsSL https://raw.githubusercontent.com/Ayushh890/sih-26127/main/oracle/setup.sh -o /opt/nirnay-bootstrap/setup.sh
+  - bash /opt/nirnay-bootstrap/setup.sh > /var/log/nirnay-firstboot.log 2>&1
+final_message: "NIRNAY first-boot setup finished (see /var/log/nirnay-firstboot.log)"

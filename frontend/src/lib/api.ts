@@ -1,8 +1,16 @@
 /**
  * Thin client for the NIRNAY REST API. Every request carries the bearer token; failures
  * surface as ApiError with the server's `detail` so screens can show the real reason.
- * The API is same-origin (Vite proxy in development, nginx in Docker).
+ * Same-origin by default (Vite proxy in development, nginx in Docker). When the console
+ * is hosted separately (e.g. Netlify), set VITE_BACKEND_URL to the API origin
+ * (e.g. https://nirnay-api.onrender.com) and the backend's CORS_ORIGINS must allow it.
  */
+
+/** API origin override for split deployments (Netlify + Render/Railway). Empty = same-origin. */
+export function backendBase(): string {
+  const raw = import.meta.env.VITE_BACKEND_URL as string | undefined;
+  return (raw ?? "").trim().replace(/\/+$/, "");
+}
 
 const TOKEN_KEY = "nirnay.token";
 
@@ -66,7 +74,7 @@ export async function request<T = unknown>(method: string, path: string, opts: {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(opts.body);
   }
-  const res = await fetch(path + qs(opts.query), { method, headers, body, signal: opts.signal });
+  const res = await fetch(backendBase() + path + qs(opts.query), { method, headers, body, signal: opts.signal });
   const text = await res.text();
   let data: unknown = null;
   if (text) {
@@ -93,7 +101,7 @@ export const api = {
 
 /** URL for media endpoints (<img>, MJPEG) — they accept the token as a query parameter. */
 export function mediaUrl(path: string, query?: Query): string {
-  return path + qs({ ...(query ?? {}), token: tokenStore.get() ?? undefined });
+  return backendBase() + path + qs({ ...(query ?? {}), token: tokenStore.get() ?? undefined });
 }
 
 export function errorText(e: unknown): string {

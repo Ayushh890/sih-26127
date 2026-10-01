@@ -1,0 +1,38 @@
+# NIRNAY console on Netlify (static frontend only).
+#
+# The FastAPI backend cannot run on Netlify. Deploy it on Render or Railway first
+# (render.yaml / railway.json + docker/app.Dockerfile, both already configured), then:
+#   1. In the Netlify site settings (Site configuration → Environment variables) set
+#        VITE_BACKEND_URL = https://<your-backend>   (e.g. https://nirnay-api.onrender.com)
+#      This is baked in at build time — changing it requires a rebuild/redeploy.
+#   2. On the backend, add the Netlify site origin to CORS_ORIGINS, e.g.
+#        CORS_ORIGINS=https://<your-site>.netlify.app
+#      (comma-separated; the API already allows the Authorization header).
+#   3. Deploy this repo on Netlify (base directory is set below; no monorepo
+#      plugin needed). Demo logins use the backend's DEMO_PASSWORD.
+#
+# Local preview of the Netlify build:
+#   cd frontend && VITE_BACKEND_URL=https://<your-backend> npm run build && npx vite preview
+
+[build]
+  base = "frontend/"
+  publish = "dist/"
+  command = "npm ci --no-audit --no-fund && npm run build"
+
+# SPA fallback: client-side routes (react-router) all serve index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, immutable"

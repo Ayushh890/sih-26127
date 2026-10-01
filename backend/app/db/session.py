@@ -19,8 +19,17 @@ def _make_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
         if ":///" in url and not url.endswith(":memory:"):
             from pathlib import Path
+            from urllib.parse import unquote
 
-            Path(url.split(":///", 1)[1]).parent.mkdir(parents=True, exist_ok=True)
+            raw = url.split(":///", 1)[1].split("?", 1)[0]
+            db_path = Path(unquote(raw))
+            # sqlite:////absolute/posix paths arrive as "/abs/..."; Windows
+            # drive URLs arrive as "C:/...". A stray leading slash before a
+            # drive letter ("/C:/...") breaks Path on Windows, so strip it.
+            if len(str(db_path)) > 3 and str(db_path)[0] == "/" and str(db_path)[2] == ":":
+                db_path = Path(str(db_path)[1:])
+            if str(db_path) not in (":memory:", ""):
+                db_path.parent.mkdir(parents=True, exist_ok=True)
         eng = create_engine(url, echo=s.DB_ECHO, connect_args={"check_same_thread": False, "timeout": 30})
 
         @event.listens_for(eng, "connect")
