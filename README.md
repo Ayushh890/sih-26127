@@ -16,6 +16,14 @@ analytics, and rule-based alerts, all shown live in an operations console.
 > **vehicles and traffic only**. There is no facial recognition and no person
 > identification, and it never controls traffic signals.
 
+## Live deployment
+
+* **Console (frontend):** <https://zerone-sih-26127.netlify.app>
+* **API (backend):** <https://sih-26127-production.up.railway.app> (health: `/health`)
+
+Log in with a demo account (`admin`, `operator`, `analyst` or `viewer`) and the
+`DEMO_PASSWORD` configured on Railway.
+
 ## Quick start
 
 ```bash
